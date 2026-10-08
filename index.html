@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Captura de Inventario (Drive)</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 500px; margin: 40px auto; padding: 20px; background-color: #f7f9fa;}
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"], input[type="number"], input[type="file"] { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        button { background-color: #4285F4; color: white; border: none; padding: 12px; cursor: pointer; width: 100%; font-size: 16px; border-radius: 4px; font-weight: bold;}
+        button:hover { background-color: #357ae8; }
+    </style>
+</head>
+<body>
+
+    <h2>Registrar Item (Google Drive)</h2>
+    <form id="inventoryForm">
+        <div class="form-group">
+            <label>Descripción del artículo</label>
+            <input type="text" id="descripcion" required placeholder="Ej. Monitor Samsung 24'">
+        </div>
+        <div class="form-group">
+            <label>Cantidad</label>
+            <input type="number" id="cantidad" required min="0" value="1">
+        </div>
+        <div class="form-group">
+            <label>Foto</label>
+            <div class="form-group">
+    <label>Tomar Foto con la Cámara</label>
+    <!-- Los atributos 'accept' y 'capture' obligan al celular a abrir la cámara directamente -->
+    <input type="file" id="foto" accept="image/*" capture="environment" required>
+</div>
+
+        </div>
+        <button type="submit" id="btnGuardar">Guardar Registro</button>
+    </form>
+
+    <script>
+        // PEGA AQUÍ TU URL DE GOOGLE APPS SCRIPT
+        const WEB_APP_URL = "TU_URL_DE_APPLICATIONS_WEB_AQUI";
+
+        document.getElementById('inventoryForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btnGuardar');
+            btn.disabled = true;
+            btn.innerText = "Subiendo a Google Drive...";
+
+            const fileInput = document.getElementById('foto');
+            const file = fileInput.files[0];
+            
+            // Convertir la imagen a Base64 para enviarla de forma ligera por la API
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = async () => {
+                const base64Image = reader.result;
+
+                const payload = {
+                    action: "insert",
+                    descripcion: document.getElementById('descripcion').value,
+                    cantidad: parseInt(document.getElementById('cantidad').value),
+                    foto: base64Image,
+                    fileName: `${Date.now()}_${file.name}`
+                };
+
+                try {
+                    const response = await fetch(WEB_APP_URL, {
+                        method: "POST",
+                        body: JSON.stringify(payload)
+                    });
+                    const result = await response.json();
+                    if(result.success) {
+                        alert("¡Guardado exitosamente en Google Sheets y Drive!");
+                        document.getElementById('inventoryForm').reset();
+                    } else {
+                        alert("Error: " + result.error);
+                    }
+                } catch (err) {
+                    alert("Error de conexión");
+                } finally {
+                    btn.disabled = false;
+                    btn.innerText = "Guardar Registro";
+                }
+            };
+        });
+    </script>
+</body>
+</html>

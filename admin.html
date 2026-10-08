@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Drive</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 950px; margin: 40px auto; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background-color: #f4f4f4; }
+        img { max-width: 60px; height: auto; border-radius: 4px; display: block; }
+        .btn-update { background-color: #28a745; color: white; border: none; padding: 6px 12px; cursor: pointer; border-radius: 4px; }
+        .btn-delete { background-color: #dc3545; color: white; border: none; padding: 6px 12px; cursor: pointer; border-radius: 4px; margin-left: 4px; }
+        input.edit-input { padding: 6px; width: 90%; box-sizing: border-box; }
+    </style>
+</head>
+<body>
+
+    <h2>Panel de Administración (Google Sheets/Drive)</h2>
+    <button onclick="cargarInventario()" style="padding: 10px 20px; cursor:pointer;">🔄 Refrescar Tabla</button>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Visualizar</th>
+                <th>Descripción</th>
+                <th>Cantidad</th>
+                <th>Fecha Guardado</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody id="tablaInventario">
+            <tr><td colspan="5">Presiona Refrescar para cargar datos...</td></tr>
+        </tbody>
+    </table>
+
+    <script>
+        // PEGA AQUÍ TU URL DE GOOGLE APPS SCRIPT
+        const WEB_APP_URL = "TU_URL_DE_APPLICATIONS_WEB_AQUI";
+
+        async function cargarInventario() {
+            const tbody = document.getElementById('tablaInventario');
+            tbody.innerHTML = '<tr><td colspan="5">Consultando base de datos de Google...</td></tr>';
+
+            try {
+                const response = await fetch(WEB_APP_URL, {
+                    method: "POST",
+                    body: JSON.stringify({ action: "read" })
+                });
+                const result = await response.json();
+                
+                if (!result.success) throw new Error(result.error);
+
+                tbody.innerHTML = '';
+                if(result.data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5">No hay registros aún.</td></tr>';
+                    return;
+                }
+
+                result.data.forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><a href="${item.Foto_URL}" target="_blank"><img src="${item.Foto_URL}" alt="Foto Item"></a></td>
+                        <td><input type="text" class="edit-input" id="desc-${item.ID}" value="${item.Descripcion}"></td>
+                        <td><input type="number" class="edit-input" id="cant-${item.ID}" value="${item.Cantidad}" style="width:70px;"></td>
+                        <td><small>${item.Fecha}</small></td>
+                        <td>
+                            <button class="btn-update" onclick="actualizarItem('${item.ID}')">Actualizar</button>
+                            <button class="btn-delete" onclick="eliminarItem('${item.ID}')">Eliminar</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="5" style="color:red;">Error: ${err.message}</td></tr>`;
+            }
+        }
+
+        async function actualizarItem(id) {
+            const payload = {
+                action: "update",
+                id: id,
+                descripcion: document.getElementById(`desc-${id}`).value,
+                cantidad: parseInt(document.getElementById(`cant-${id}`).value)
+            };
+
+            const response = await fetch(WEB_APP_URL, { method: "POST", body: JSON.stringify(payload) });
+            const result = await response.json();
+            if(result.success) alert("Modificado en Google Sheets.");
+            else alert("Error al modificar.");
+        }
+
+        async function eliminarItem(id) {
+            if(!confirm("¿Deseas remover este artículo de la base de datos?")) return;
+            const response = await fetch(WEB_APP_URL, { method: "POST", body: JSON.stringify({ action: "delete", id: id }) });
+            const result = await response.json();
+            if(result.success) {
+                alert("Eliminado.");
+                cargarInventario();
+            }
+        }
+
+        window.onload = cargarInventario;
+    </script>
+</body>
+</html>
